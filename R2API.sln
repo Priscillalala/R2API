@@ -1,4 +1,3 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -14,6 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		API-README-BASE.md = API-README-BASE.md
 		Archived changelogs.md = Archived changelogs.md
 		CONTRIBUTING.md = CONTRIBUTING.md
+		locally_verify_release_ci.sh = locally_verify_release_ci.sh
 		Modules Initialization.txt = Modules Initialization.txt
 		nuget.config = nuget.config
 		R2API.props = R2API.props
@@ -84,6 +84,14 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BuildCI", "BuildCI\BuildCI.csproj", "{238ED894-932A-40B8-BD59-0E0F16242C10}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "R2API.Rules", "R2API.Rules\R2API.Rules.csproj", "{EE0946D0-2181-49BD-AF1E-75DBA3DA89AF}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "R2API.Skins", "R2API.Skins\R2API.Skins.csproj", "{C712F6B5-1E08-4FB5-90EE-2D2C7F2DFF55}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "R2API.Stages", "R2API.Stages\R2API.Stages.csproj", "{462180FD-0ECD-4344-A5B1-9B2006E3B17E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "R2API.Addressables", "R2API.Addressables\R2API.Addressables.csproj", "{3AB66A0A-4905-41B2-A397-7C7D92CDDA8D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "R2API.StringSerializerExtensions", "R2API.StringSerializerExtensions\R2API.StringSerializerExtensions.csproj", "{93F45245-4CE0-488E-835E-477155F65773}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -211,6 +219,22 @@ Global
 		{EE0946D0-2181-49BD-AF1E-75DBA3DA89AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EE0946D0-2181-49BD-AF1E-75DBA3DA89AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EE0946D0-2181-49BD-AF1E-75DBA3DA89AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C712F6B5-1E08-4FB5-90EE-2D2C7F2DFF55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C712F6B5-1E08-4FB5-90EE-2D2C7F2DFF55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C712F6B5-1E08-4FB5-90EE-2D2C7F2DFF55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C712F6B5-1E08-4FB5-90EE-2D2C7F2DFF55}.Release|Any CPU.Build.0 = Release|Any CPU
+		{462180FD-0ECD-4344-A5B1-9B2006E3B17E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{462180FD-0ECD-4344-A5B1-9B2006E3B17E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{462180FD-0ECD-4344-A5B1-9B2006E3B17E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{462180FD-0ECD-4344-A5B1-9B2006E3B17E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3AB66A0A-4905-41B2-A397-7C7D92CDDA8D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3AB66A0A-4905-41B2-A397-7C7D92CDDA8D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3AB66A0A-4905-41B2-A397-7C7D92CDDA8D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3AB66A0A-4905-41B2-A397-7C7D92CDDA8D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{93F45245-4CE0-488E-835E-477155F65773}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{93F45245-4CE0-488E-835E-477155F65773}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{93F45245-4CE0-488E-835E-477155F65773}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{93F45245-4CE0-488E-835E-477155F65773}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

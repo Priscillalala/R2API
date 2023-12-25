@@ -8,7 +8,9 @@ using BepInEx.Logging;
 [assembly: InternalsVisibleTo("R2API.TempVisualEffect")]
 [assembly: InternalsVisibleTo("R2API.Loadout")]
 [assembly: InternalsVisibleTo("R2API.Sound")]
+[assembly: InternalsVisibleTo("R2API.Stages")]
 [assembly: InternalsVisibleTo("R2API.Prefab")]
+[assembly: HG.Reflection.SearchableAttribute.OptIn]
 
 namespace R2API.ContentManagement;
 
