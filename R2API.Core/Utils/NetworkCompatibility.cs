@@ -88,15 +88,13 @@ internal class NetworkCompatibilityHandler
                 var modGuid = pluginInfo.Metadata.GUID;
                 var modVer = pluginInfo.Metadata.Version;
 
-                if (modGuid.StartsWith(R2API.PluginGUID))
+                if (modGuid == R2API.PluginGUID)
                 {
                     continue;
                 }
 
-                var hasZeroHardDependencyOnAnyR2APIModules =
-                    pluginInfo.Dependencies.All(dependency => !dependency.DependencyGUID.StartsWith(R2API.PluginGUID) ||
-                    dependency.Flags == BepInEx.BepInDependency.DependencyFlags.SoftDependency);
-                if (hasZeroHardDependencyOnAnyR2APIModules)
+                if (pluginInfo.Dependencies.All(dependency => !dependency.DependencyGUID.StartsWith(R2API.PluginGUID) ||
+                    dependency.Flags == BepInEx.BepInDependency.DependencyFlags.SoftDependency))
                 {
                     continue;
                 }

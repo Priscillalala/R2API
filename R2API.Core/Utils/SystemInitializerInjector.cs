@@ -1,11 +1,9 @@
-﻿using HarmonyLib;
-using Mono.Cecil.Cil;
-using MonoMod.Cil;
-using RoR2;
+﻿using RoR2;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Text;
 using System.Reflection;
+using System.Linq;
 
 namespace R2API.Utils;
 
@@ -14,47 +12,7 @@ namespace R2API.Utils;
 /// </summary>
 public static class SystemInitializerInjector
 {
-    static readonly Dictionary<MethodInfo, HashSet<Type>> _dependenciesToInject = new Dictionary<MethodInfo, HashSet<Type>>();
-
-    static bool _appliedHooks = false;
-    static void applyHooksIfNeeded()
-    {
-        if (_appliedHooks)
-            return;
-
-        IL.RoR2.SystemInitializerAttribute.Execute += il =>
-        {
-            ILCursor c = new ILCursor(il);
-
-            if (c.TryGotoNext(x => x.MatchCallOrCallvirt(SymbolExtensions.GetMethodInfo<Queue<SystemInitializerAttribute>>(_ => _.Enqueue(default)))))
-            {
-                c.Emit(OpCodes.Dup);
-                c.EmitDelegate((SystemInitializerAttribute instance) =>
-                {
-                    if (instance.target is MethodInfo initializerMethod && _dependenciesToInject.TryGetValue(initializerMethod, out HashSet<Type> newDependencies))
-                    {
-                        newDependencies.RemoveWhere(t => instance.dependencies.Contains(t));
-                        if (newDependencies.Count == 0)
-                            return;
-
-                        int originalDependenciesLength = instance.dependencies.Length;
-                        Array.Resize(ref instance.dependencies, originalDependenciesLength + newDependencies.Count);
-                        newDependencies.CopyTo(instance.dependencies, originalDependenciesLength);
-
-#if DEBUG
-                        R2API.Logger.LogDebug($"SystemInitializerInjector: Injected {newDependencies.Count} dependencies into {initializerMethod.DeclaringType.FullName}.{initializerMethod.Name}");
-#endif
-                    }
-                });
-            }
-            else
-            {
-                R2API.Logger.LogError("SystemInitializerInjector: Failed to find IL patch location");
-            }
-        };
-
-        _appliedHooks = true;
-    }
+    private static Dictionary<Type, SystemInitializerAttribute> typeToSystemInitializer = new Dictionary<Type, SystemInitializerAttribute>();
 
     /// <summary>
     /// Injects the dependencies specified in <paramref name="dependenciesToInject"/> to the Type specified in <typeparamref name="T"/>
@@ -113,73 +71,45 @@ public static class SystemInitializerInjector
 
     private static void InjectDependencyInternal(Type typeToInject, Type dependency)
     {
-        if (typeToInject is null)
-            throw new ArgumentNullException(nameof(typeToInject));
-
-        if (dependency is null)
-            throw new ArgumentNullException(nameof(dependency));
-
-        foreach (MethodInfo initializerMethod in GetAllSystemInitializerMethods(typeToInject))
-        {
-            InjectDependencyInternal(initializerMethod, dependency);
-        }
-    }
-
-    private static IEnumerable<MethodInfo> GetAllSystemInitializerMethods(Type type)
-    {
-        return type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
-                   .Where(m => m.GetCustomAttribute<SystemInitializerAttribute>() != null);
-    }
-
-    /// <summary>
-    /// Injects <paramref name="dependency"/> as a dependency into the SystemInitializer method <paramref name="initializerMethod"/>
-    /// </summary>
-    /// <param name="initializerMethod">The initializer method to inject the dependency into</param>
-    /// <param name="dependency">The dependency type to inject</param>
-    public static void InjectDependency(MethodInfo initializerMethod, Type dependency)
-    {
-        ThrowIfSystemInitializerExecuted();
-
-        InjectDependencyInternal(initializerMethod, dependency);
-    }
-
-    /// <summary>
-    /// Injects <paramref name="dependencies"/> as dependencies into the SystemInitializer method <paramref name="initializerMethod"/>
-    /// </summary>
-    /// <param name="initializerMethod">The initializer method to inject the dependencies into</param>
-    /// <param name="dependencies">The dependency types to inject</param>
-    public static void InjectDependencies(MethodInfo initializerMethod, params Type[] dependencies)
-    {
-        ThrowIfSystemInitializerExecuted();
-
-        foreach (Type dependency in dependencies)
-        {
-            InjectDependencyInternal(initializerMethod, dependency);
-        }
-    }
-
-    private static void InjectDependencyInternal(MethodInfo initializerMethod, Type dependency)
-    {
-        if (dependency is null)
-            throw new ArgumentNullException(nameof(dependency));
-
-        if (initializerMethod is null)
-            throw new ArgumentNullException(nameof(initializerMethod));
-
-        if (initializerMethod.GetCustomAttribute<SystemInitializerAttribute>() == null)
-        {
-            R2API.Logger.LogWarning($"Not injecting SystemInitializer dependency {dependency.FullName} into {initializerMethod.DeclaringType.FullName}.{initializerMethod.Name}: Method is missing {nameof(SystemInitializerAttribute)}");
+        if (dependency == null || typeToInject == null)
             return;
-        }
 
-        if (!_dependenciesToInject.TryGetValue(initializerMethod, out HashSet<Type> injectedDependencies))
-            _dependenciesToInject.Add(initializerMethod, injectedDependencies = new HashSet<Type>());
+        SystemInitializerAttribute attribute = GetSystemInitializerAttribute(typeToInject);
 
-        if (injectedDependencies.Add(dependency))
+        if(attribute != null && !attribute.dependencies.Contains(dependency))
         {
-            applyHooksIfNeeded();
-            R2API.Logger.LogDebug($"Injecting SystemInitializer dependency {dependency.FullName} into {initializerMethod.DeclaringType.FullName}.{initializerMethod.Name}");
+            R2API.Logger.LogDebug($"Injecting {dependency.FullName} to {typeToInject.FullName}'s {nameof(SystemInitializerAttribute)}'s dependencies.");
+            HG.ArrayUtils.ArrayAppend(ref attribute.dependencies, dependency);
         }
+    }
+
+    private static SystemInitializerAttribute GetSystemInitializerAttribute(Type typeToSearch)
+    {
+        if(typeToSystemInitializer.TryGetValue(typeToSearch, out var systemInitAttribute))
+        {
+            return systemInitAttribute;
+        }
+        MethodInfo[] candidateMethods = typeToSearch.GetMethods(BindingFlags.Static | BindingFlags.NonPublic);
+
+        SystemInitializerAttribute foundAttribute = null;
+        foreach(MethodInfo method in candidateMethods)
+        {
+            var attributeThatMayOrMayNotExistInMethod = method.GetCustomAttribute<SystemInitializerAttribute>();
+            if(attributeThatMayOrMayNotExistInMethod != null)
+            {
+                foundAttribute = attributeThatMayOrMayNotExistInMethod;
+                break;
+            }
+        }
+
+        if(foundAttribute == null)
+        {
+            R2API.Logger.LogWarning($"Could not find a SystemInitializerAttribute inside {typeToSearch.AssemblyQualifiedName}");
+            return foundAttribute;
+        }
+
+        typeToSystemInitializer.Add(typeToSearch, foundAttribute);
+        return foundAttribute;
     }
 
     private static void ThrowIfSystemInitializerExecuted()

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MonoMod.RuntimeDetour.HookGen;
@@ -8,7 +9,6 @@ using R2API.Utils;
 using RoR2;
 using RoR2.Orbs;
 using RoR2.Projectile;
-using RoR2BepInExPack.Utilities;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -28,7 +28,7 @@ public static partial class DamageAPI
 
     public enum ModdedDamageType { };
 
-    private static readonly FixedConditionalWeakTable<object, ModdedDamageTypeHolder> damageTypeHolders = new();
+    private static readonly ConditionalWeakTable<object, ModdedDamageTypeHolder> damageTypeHolders = new();
 
     private static ModdedDamageTypeHolder TempHolder { get; set; }
 
@@ -260,7 +260,7 @@ public static partial class DamageAPI
 
         c.GotoNext(
             MoveType.After,
-            x => x.MatchStfld<ProjectileOverlapAttack>(nameof(ProjectileOverlapAttack.attack)));
+            x => x.MatchNewobj<OverlapAttack>());
 
         c.Emit(OpCodes.Ldarg_0);
         c.Emit<ProjectileOverlapAttack>(OpCodes.Ldfld, nameof(ProjectileOverlapAttack.attack));
@@ -300,7 +300,7 @@ public static partial class DamageAPI
 
         c.GotoNext(
             MoveType.After,
-            x => x.MatchStfld<ProjectileDotZone>(nameof(ProjectileDotZone.attack)));
+            x => x.MatchNewobj<OverlapAttack>());
 
         c.Emit(OpCodes.Ldarg_0);
         c.Emit<ProjectileDotZone>(OpCodes.Ldfld, nameof(ProjectileDotZone.attack));
@@ -961,7 +961,7 @@ public static partial class DamageAPI
     /// </summary>
     public class ModdedDamageTypeHolder
     {
-        private byte[] values = Array.Empty<byte>();
+        private byte[] values;
 
         public ModdedDamageTypeHolder() { SetHooks(); }
 
@@ -969,10 +969,7 @@ public static partial class DamageAPI
         {
             SetHooks();
 
-            if (values.Length > 0)
-            {
-                this.values = values.ToArray();
-            }
+            this.values = values?.ToArray();
         }
 
         /// <summary>
@@ -1060,23 +1057,21 @@ public static partial class DamageAPI
             DamageAPI.SetHooks();
             var holder = new ModdedDamageTypeHolder
             {
-                values = values.Length == 0 ? values : values.ToArray()
+                values = values?.ToArray()
             };
             return holder;
         }
 
         /// <summary>
-        /// Reads compressed value from the NerworkReader. More info about that can be found in the PRs:
-        /// https://github.com/risk-of-thunder/R2API/pull/284
-        /// https://github.com/risk-of-thunder/R2API/pull/464
+        /// Reads compressed value from the NerworkReader. More info about that can be found in the PR: https://github.com/risk-of-thunder/R2API/pull/284
         /// </summary>
         /// <param name="reader"></param>
         /// <returns></returns>
         public static ModdedDamageTypeHolder ReadFromNetworkReader(NetworkReader reader)
         {
             DamageAPI.SetHooks();
-            var values = CompressedFlagArrayUtilities.ReadFromNetworkReader(reader, ModdedDamageTypeCount);
-            if (values.Length == 0)
+            var values = CompressedFlagArrayUtilities.ReadFromNetworkReader(reader);
+            if (values == null)
             {
                 return null;
             }
@@ -1088,12 +1083,10 @@ public static partial class DamageAPI
         }
 
         /// <summary>
-        /// Writes compressed value to the NerworkWriter. More info about that can be found in the PRs:
-        /// https://github.com/risk-of-thunder/R2API/pull/284
-        /// https://github.com/risk-of-thunder/R2API/pull/464
+        /// Writes compressed value to the NerworkWriter. More info about that can be found in the PR: https://github.com/risk-of-thunder/R2API/pull/284
         /// </summary>
         /// <param name="writer"></param>
-        public void WriteToNetworkWriter(NetworkWriter writer) => CompressedFlagArrayUtilities.WriteToNetworkWriter(values, writer, ModdedDamageTypeCount);
+        public void WriteToNetworkWriter(NetworkWriter writer) => CompressedFlagArrayUtilities.WriteToNetworkWriter(values, writer);
     }
 
     /// <summary>
@@ -1106,7 +1099,7 @@ public static partial class DamageAPI
         //I can't just use ModdedDamageTypeHolder instead of byte[] because Unity can't serialize classes that come from assemblies
         //that are not present at startup (basically every mod) even if they use [Serializable] attribute.
         //Though Unity can serialize class if it inherit from MonoBehaviour or ScriptableObject.
-        private byte[] values = Array.Empty<byte>();
+        private byte[] values;
 
         /// <summary>
         /// Enable ModdedDamageType for this instance

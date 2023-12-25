@@ -102,21 +102,12 @@ internal class R2APIContentPackProvider
                 }
             }
         }
-
         R2APIContentManager.CreateContentPacks();
-
         foreach (ManagedReadOnlyContentPack managedReadOnlyContentPack in R2APIContentManager.ManagedContentPacks)
         {
             if (managedReadOnlyContentPack.HasAutoCreatedIContentPackProvider)
             {
-                try
-                {
-                    addContentPackProvider(managedReadOnlyContentPack.contentPackProvider);
-                }
-                catch (Exception e)
-                {
-                    ContentManagementPlugin.Logger.LogError(e);
-                }
+                addContentPackProvider(managedReadOnlyContentPack.contentPackProvider);
             }
         }
     }

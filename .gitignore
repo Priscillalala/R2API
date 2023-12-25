@@ -331,6 +331,3 @@ ASALocalRun/
 
 # Build CI
 ReleaseOutput/
-
-# Debug
-All R2API Modules/

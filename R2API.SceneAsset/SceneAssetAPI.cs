@@ -1,13 +1,10 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using R2API.AutoVersionGen;
 using R2API.MiscHelpers;
 using R2API.Utils;
-using RoR2;
-using RoR2.Networking;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
 
 namespace R2API;
@@ -31,10 +28,10 @@ public static partial class SceneAssetAPI
 #pragma warning restore CS0618 // Type or member is obsolete
     public static bool Loaded => true;
 
-    private static readonly Dictionary<string, Action<GameObject[]>> SceneNameToAssetRequests = new();
+    private static readonly Dictionary<string, List<Action<GameObject[]>>> SceneNameToAssetRequests =
+        new Dictionary<string, List<Action<GameObject[]>>>();
 
     private static bool _hooksEnabled = false;
-    private static bool _requestsDone = false;
 
     internal static void SetHooks()
     {
@@ -43,74 +40,28 @@ public static partial class SceneAssetAPI
             return;
         }
 
-        SceneManager.sceneLoaded += SceneManager_sceneLoaded;
+        On.RoR2.SplashScreenController.Finish += PrepareRequests;
 
         _hooksEnabled = true;
     }
 
-    private static void SceneManager_sceneLoaded(Scene arg0, LoadSceneMode arg1)
-    {
-        if (_requestsDone)
-            return;
-
-        if (arg0.name != "loadingbasic" &&
-            arg0.name != "splash" &&
-            arg0.name != "intro")
-        {
-            PrepareRequests();
-            _requestsDone = true;
-        }
-    }
-
     internal static void UnsetHooks()
     {
+        On.RoR2.SplashScreenController.Finish -= PrepareRequests;
+
         _hooksEnabled = false;
     }
 
-    private static void PrepareRequests()
+    private static void PrepareRequests(On.RoR2.SplashScreenController.orig_Finish orig, RoR2.SplashScreenController self)
     {
+        orig(self);
+
         foreach (var (sceneName, actionList) in SceneNameToAssetRequests)
         {
             try
             {
-                var sceneDef = SceneCatalog.FindSceneDef(sceneName);
-                if (sceneDef)
-                {
-                    var sceneAddress = sceneDef.sceneAddress;
-                    string addressableKey = (sceneAddress != null) ? sceneAddress.AssetGUID : null;
-
-                    var isAStageThatHasAnAddressableKey = !string.IsNullOrEmpty(addressableKey);
-                    if (isAStageThatHasAnAddressableKey)
-                    {
-                        if (NetworkManagerSystem.IsAddressablesKeyValid(addressableKey, typeof(SceneInstance)))
-                        {
-                            var asyncOperationHandle = Addressables.LoadSceneAsync(addressableKey, LoadSceneMode.Additive, true);
-                            asyncOperationHandle.Completed += (handle) =>
-                                ExecuteAddressableRequest(sceneName, actionList, handle.Result);
-
-                            SceneAssetPlugin.Logger.LogInfo($"Loaded the scene {sceneName} through Addressables.LoadSceneAsync");
-                        }
-                        else
-                        {
-                            SceneAssetPlugin.Logger.LogError($"Addressable key Scene address is invalid for sceneName {sceneName} | {sceneAddress}");
-                        }
-                    }
-                    else
-                    {
-                        var scene = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
-                        scene.completed += (_) => ExecuteRequest(sceneName, actionList);
-
-                        SceneAssetPlugin.Logger.LogInfo($"Loaded the scene {sceneName} through SceneManager.LoadScene");
-                    }
-                }
-                else
-                {
-                    SceneAssetPlugin.Logger.LogError($"{sceneName} doesnt exist, available scene names:");
-                    foreach (var kvp in SceneCatalog.nameToIndex)
-                    {
-                        SceneAssetPlugin.Logger.LogError($"{kvp.Key}");
-                    }
-                }
+                SceneManager.LoadScene(sceneName, LoadSceneMode.Additive);
+                R2API.Instance.StartCoroutine(ExecuteRequest(sceneName, actionList));
             }
             catch (Exception e)
             {
@@ -119,38 +70,22 @@ public static partial class SceneAssetAPI
         }
     }
 
-    private static void ExecuteAddressableRequest(string sceneName, Action<GameObject[]> actionList, SceneInstance sceneInstance)
+    private static IEnumerator ExecuteRequest(string sceneName, List<Action<GameObject[]>> actionList)
     {
-        var scene = sceneInstance.Scene;
+        // Wait for next frame so that the scene is loaded
+        yield return 0;
 
-        ExecuteRequestInternal(actionList, scene);
-
-        Addressables.UnloadSceneAsync(sceneInstance);
-    }
-
-    private static void ExecuteRequest(string sceneName, Action<GameObject[]> actionList)
-    {
         var scene = SceneManager.GetSceneByName(sceneName);
 
-        ExecuteRequestInternal(actionList, scene);
+        var rootObjects = scene.GetRootGameObjects();
+        foreach (var action in actionList)
+        {
+            action(rootObjects);
+        }
 
         SceneManager.UnloadSceneAsync(sceneName);
-    }
 
-    private static void ExecuteRequestInternal(Action<GameObject[]> actionList, Scene scene)
-    {
-        var rootObjects = scene.GetRootGameObjects();
-        foreach (Action<GameObject[]> action in actionList.GetInvocationList())
-        {
-            try
-            {
-                action(rootObjects);
-            }
-            catch (Exception e)
-            {
-                SceneAssetPlugin.Logger.LogError(e);
-            }
-        }
+        yield return null;
     }
 
     /// <summary>
@@ -164,13 +99,13 @@ public static partial class SceneAssetAPI
     public static void AddAssetRequest(string? sceneName, Action<GameObject[]>? onSceneObjectsLoaded)
     {
         SceneAssetAPI.SetHooks();
-        if (SceneNameToAssetRequests.TryGetValue(sceneName, out var _))
+        if (SceneNameToAssetRequests.TryGetValue(sceneName, out var actionList))
         {
-            SceneNameToAssetRequests[sceneName] += onSceneObjectsLoaded;
+            actionList.Add(onSceneObjectsLoaded);
         }
         else
         {
-            SceneNameToAssetRequests[sceneName] = onSceneObjectsLoaded;
+            SceneNameToAssetRequests[sceneName] = new List<Action<GameObject[]>> { onSceneObjectsLoaded };
         }
     }
 }

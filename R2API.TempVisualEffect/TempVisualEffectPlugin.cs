@@ -1,10 +1,8 @@
 using BepInEx;
 using BepInEx.Logging;
-using R2API.ContentManagement;
 
 namespace R2API;
 
-[BepInDependency(R2APIContentManager.PluginGUID)]
 [BepInPlugin(TempVisualEffectAPI.PluginGUID, TempVisualEffectAPI.PluginName, TempVisualEffectAPI.PluginVersion)]
 public sealed class TempVisualEffectPlugin : BaseUnityPlugin
 {

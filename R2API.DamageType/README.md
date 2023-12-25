@@ -22,15 +22,6 @@ This is done via the DamageAPI class, which is used for reserving DamageTypes an
 
 ## Changelog
 
-### '1.0.4'
-* Memory optimization
-
-### '1.0.3'
-* Optimization
-
-### '1.0.2'
-* Fix projectile IL hooks
-
 ### '1.0.1'
 * Made IL hooks more robust to stop API failing because of other mods
 
